@@ -1,12 +1,10 @@
-import React, { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   DndContext,
   DragEndEvent,
   DragOverlay,
   DragStartEvent,
 } from "@dnd-kit/core";
-// import { DragDropContext } from "@hello-pangea/dnd";
-// import type { DropResult } from "@hello-pangea/dnd";
 import { TasksGroups } from "./TasksGroups";
 import { Task } from "./Task";
 import { atom, useAtom, PrimitiveAtom, useSetAtom } from "jotai";
@@ -21,7 +19,7 @@ enum TaskStatus {
   COMPLETE = "COMPLETE",
 }
 
-const TaskLabels = {
+const TaskLabels: { [key: string]: string } = {
   [TaskStatus.BACKLOG]: "Backlog",
   [TaskStatus.TO_DO]: "To Do’s 🖋️",
   [TaskStatus.IN_PROGRESS]: "In Progress ✌️",
@@ -40,14 +38,6 @@ const containers = [
   TaskStatus.IN_PROGRESS,
   TaskStatus.COMPLETE,
 ];
-
-function reorder(list, startIndex, endIndex) {
-  const result = Array.from(list);
-  const [removed] = result.splice(startIndex, 1);
-  result.splice(endIndex, 0, removed);
-
-  return result;
-}
 
 const tasks = new Array(1000).fill(null).map((_, i) => ({
   id: crypto.randomUUID(),
@@ -70,7 +60,7 @@ const taskStatusAtoms: { [key: string]: PrimitiveAtom<Task[]> } =
 
 function App() {
   const [tasks, updateTasks] = useAtom(tasksAtom);
-  const [activeId, setActiveId] = useState(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const activeTask = useMemo(() => {
     if (!activeId) return null;
     return tasks.find((t) => t.id === activeId);
@@ -78,38 +68,22 @@ function App() {
 
   const handleDragEnd = useCallback(
     function (event: DragEndEvent) {
-      // if (!event?.destination || !event?.source) return;
-      // if (event.source.index === event.destination.index) {
-      //   return;
-      // }
-
-      // const { draggableId, destination } = event;
-      // console.log("event", event);
-
       setActiveId(null);
       if (!event?.over) return;
       const { active, over } = event;
-      // const taskId = parseInt(active.id as string);
       updateTasks((draft) => {
         const task = draft.find(({ id }) => id === active.id);
         if (task) {
           task.status = over.id as TaskStatus;
         }
       });
-
-      // updateTasks((draft) => {
-      //   const task = draft.find((task) => task.id === draggableId);
-      //   console.log("task", task?.id, draggableId, destination.droppableId);
-      //   if (!task) return;
-      //   task.status = destination.droppableId as TaskStatus;
-      // });
     },
     [updateTasks]
   );
 
   const handleDragStart = useCallback(
     function (event: DragStartEvent) {
-      setActiveId(event.active.id);
+      setActiveId(event.active.id as string);
     },
     [setActiveId]
   );
@@ -139,30 +113,6 @@ function App() {
   );
 }
 
-function ContainerGroup({ taskStatus }: { taskStatus: TaskStatus }) {
-  const [status] = useAtom(taskStatusAtoms[taskStatus]);
-  // console.log("stat", taskStatus, status);
-
-  return (
-    <TasksGroups
-      key={taskStatus}
-      id={taskStatus}
-      title={TaskLabels[taskStatus]}
-    >
-      {status.length === 0 && "Drop here"}
-      {status.map((task, i) => (
-        <TaskAtom key={task.id} task={task} index={i} />
-      ))}
-    </TasksGroups>
-  );
-}
-
-function TaskAtom({ task, index }: { task: Task; index: number }) {
-  const { id, title } = task;
-  // console.log("task item rendering", id);
-  return <Task id={id} title={title} />;
-}
-
 export default App;
 
 export function TasksGroupsVirtuoso({ taskStatus }: { taskStatus: string }) {
@@ -177,8 +127,19 @@ export function TasksGroupsVirtuoso({ taskStatus }: { taskStatus: string }) {
   };
 
   return (
-    <>
+    <div className="col-span-full sm:col-span-6 xl:col-span-3">
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="grow font-semibold text-slate-800 dark:text-slate-100 truncate">
+          {TaskLabels[taskStatus]}
+        </h2>
+        <button className="shrink-0 text-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 ml-2">
+          <svg className="w-4 h-4 fill-current" viewBox="0 0 16 16">
+            <path d="M15 7H9V1c0-.6-.4-1-1-1S7 .4 7 1v6H1c-.6 0-1 .4-1 1s.4 1 1 1h6v6c0 .6.4 1 1 1s1-.4 1-1V9h6c.6 0 1-.4 1-1s-.4-1-1-1z" />
+          </svg>
+        </button>
+      </div>
       <Virtuoso
+        // @ts-expect-error ref typing
         scrollerRef={setNodeRef}
         totalCount={status.length}
         itemContent={(index) => {
@@ -186,8 +147,7 @@ export function TasksGroupsVirtuoso({ taskStatus }: { taskStatus: string }) {
           return <Task id={task.id} title={task.title} />;
         }}
         style={style}
-        className="col-span-full sm:col-span-6 xl:col-span-3"
       />
-    </>
+    </div>
   );
 }
